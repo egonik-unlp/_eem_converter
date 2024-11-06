@@ -2,6 +2,7 @@
 
 
 
+use std::rc::Rc;
 use std::{env, io::Error, os};
 
 use std::path::PathBuf;
@@ -30,31 +31,33 @@ fn parse_file(filename : &PathBuf ) -> (Vec<String>, Vec<String>,Vec<Vec<String>
     let mut wlex = vec![];
     let mut ints: Vec<Vec<String>> = vec![];
     records.advance_by(1).unwrap();
+    let mut ilprevio = vec![String::from("e")];
     for  (nline, record) in records.enumerate() {
-        let inner = record.unwrap();
-            if inner.len().lt(&(wlem.len() + 1)){
+        let inner = record
+            .inspect_err(|err| {
+                println!("{:?}", err);
+                println!("{:?}", ilprevio)
+            })
+            .unwrap();
+        if inner.as_slice().starts_with(|character: char| character.is_alphabetic() ) {
             break;
         }
         let mut row: Vec<String> = inner.into_iter().map(|n|n.to_owned()).collect();
+        ilprevio = row.clone();
         let wl: String = row.remove(0);
         ints.push(row);
         wlex.push(wl);
     }
     return (wlem, wlex, ints);
 }
-#[derive(Debug)]
-struct NoFileProvided;
-fn main() {
-    let file = env::args().nth(1).ok_or(NoFileProvided).unwrap();
-     let sce = PathBuf::from(file);
-    match sce.extension().and_then(|s| s.to_str()) {
-        Some("csv") | Some("CSV")  => (),
-        _ => panic!("Expecting an excel file"),
-    }
-
+fn process_file(pb :PathBuf) { 
     
-    let sinex = sce.file_stem().unwrap();
-    let (xx, yy, zz) = parse_file(&sce);
+    match pb.extension().and_then(|s| s.to_str()) {
+        Some("csv") | Some("CSV")  => (),
+        _ => panic!("Expecting a CSV file"),
+    }
+    let sinex = pb.file_stem().unwrap();
+    let (xx, yy, zz) = parse_file(&pb);
     let _ = Writer::from_path(format!("{}.xx.csv", sinex.to_str().unwrap())).unwrap().write_record(xx).unwrap();
     let _ = Writer::from_path(format!("{}.yy.csv", sinex.to_str().unwrap())).unwrap().write_record(yy).unwrap();
     let mut matrix_writer = csv::Writer::from_path(format!("{}.zz.csv", sinex.to_str().unwrap())).unwrap();
@@ -62,4 +65,15 @@ fn main() {
         matrix_writer.write_record(record).unwrap();
     }
     
+}
+
+fn main() {
+    let file = env::args().nth(1);
+    match file {
+        Some(inner) => {
+             let sce = PathBuf::from(inner);
+             process_file(sce);
+        },
+        None => println!("No file provided.\nExpexted usage\neemsc file.csv")
+    };
 }
