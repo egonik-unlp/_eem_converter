@@ -2,11 +2,10 @@
 
 
 
-use std::rc::Rc;
-use std::{env, io::Error, os};
+use std::env;
 
 use std::path::PathBuf;
-use csv::{Writer, WriterBuilder};
+use csv::Writer;
 use regex::Regex;
 
 
@@ -32,7 +31,7 @@ fn parse_file(filename : &PathBuf ) -> (Vec<String>, Vec<String>,Vec<Vec<String>
     let mut ints: Vec<Vec<String>> = vec![];
     records.advance_by(1).unwrap();
     let mut ilprevio = vec![String::from("e")];
-    for  (nline, record) in records.enumerate() {
+    for record in records {
         let inner = record
             .inspect_err(|err| {
                 println!("{:?}", err);
